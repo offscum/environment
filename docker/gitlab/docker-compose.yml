@@ -1,0 +1,45 @@
+version: '3'
+
+services:
+  gitlab:
+    image: 'twang2218/gitlab-ce-zh'
+    restart: always
+    hostname: gitlab
+    privileged: true
+    container_name: gitlab
+    ports:
+      - "10022:22"
+      - "10080:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "500m"
+    volumes:
+      - ./gitlab/data:/var/opt/gitlab:Z
+      - ./gitlab/logs:/var/log/gitlab:Z
+      - ./gitlab/conf/gitlab.rb:/etc/gitlab/gitlab.rb:Z
+    networks:
+      - gitlab
+
+  gitlab-runner:
+    image: 'gitlab/gitlab-runner'
+    restart: always
+    hostname: gitlab-runner
+    privileged: true
+    container_name: gitlab-runner
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "500m"
+    volumes:
+      - ./gitlab-runner/config/config.toml:/etc/gitlab-runner/config.toml:Z
+      - /var/run/docker.sock:/var/run/docker.sock:Z
+    depends_on:
+      - gitlab
+    networks:
+      - gitlab
+
+networks:
+  gitlab:
