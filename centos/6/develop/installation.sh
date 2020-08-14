@@ -45,12 +45,12 @@ SHELL_DIRECTORY=$(cd `dirname $0`; pwd)
 #
 # 安装包目录
 #
-PACKAGE_DIRECTORY=${SHELL_DIRECTORY}/package
+PACKAGE_DIRECTORY=/opt/package
 
 #
 # 软件安装目录
 #
-SOFTWARE_DIRECTORY=${SHELL_DIRECTORY}/software
+SOFTWARE_DIRECTORY=/opt/software
 
 
 ####################################################################################################
@@ -80,50 +80,6 @@ function Initialize()
 		mkdir ${SOFTWARE_DIRECTORY}
 
 		chmod 755 ${SOFTWARE_DIRECTORY}
-
-	fi
-
-	#
-	# 导入路径
-	#
-	if [ `grep -c "/usr/lib" /etc/ld.so.conf` -eq '0' ]; then
-
-		echo /usr/lib >> /etc/ld.so.conf
-
-		ldconfig
-
-	fi
-
-	#
-	# 导入路径
-	#
-	if [ `grep -c "/usr/lib64" /etc/ld.so.conf` -eq '0' ]; then
-
-		echo /usr/lib64 >> /etc/ld.so.conf
-
-		ldconfig
-
-	fi
-
-	#
-	# 导入路径
-	#
-	if [ `grep -c "/usr/local/lib" /etc/ld.so.conf` -eq '0' ]; then
-
-		echo /usr/local/lib >> /etc/ld.so.conf
-
-		ldconfig
-
-	fi
-
-	#
-	# 导入路径
-	#
-	if [ `grep -c "/usr/local/lib64" /etc/ld.so.conf` -eq '0' ]; then
-
-		echo /usr/local/lib64 >> /etc/ld.so.conf
-
-		ldconfig
 
 	fi
 }
@@ -492,34 +448,10 @@ function YumProcess()
 function SystemProcess()
 {
 	#
-	# 设置密码
-	#
-	echo "root:111111" | chpasswd
-
-	#
-	# 开启服务
-	#
-	service sshd restart
-	service httpd restart
-	service crond restart
-	service mysqld restart
-	service rsyslog restart
-
-	#
 	# git配置
 	#
 	git config --global http.postBuffer 1024288000
 	git config --list
-
-	#
-	# 下载初始化脚本
-	#
-	wget -P ~ https://raw.githubusercontent.com/offscum/script/master/develop/init.sh
-
-	#
-	# 赋予权限
-	#
-	chmod 777 ~/init.sh
 }
 
 
@@ -664,7 +596,7 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gnu/gmp" ]; then
+	if [ ! -d "${SOFTWARE_DIRECTORY}/gmp" ]; then
 
 		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/gmp"
 
@@ -686,16 +618,18 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/gmp
 
-			./configure \
-			--prefix=${SOFTWARE_DIRECTORY}/gnu/gmp
+			rm -rf build && mkdir build && cd build
+
+			../configure \
+			--prefix=${SOFTWARE_DIRECTORY}/gmp
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/gnu/gmp" ]; then
+		if [ -d "${SOFTWARE_DIRECTORY}/gmp" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/gnu/gmp/lib >> /etc/ld.so.conf
+			echo ${SOFTWARE_DIRECTORY}/gmp/lib >> /etc/ld.so.conf
 
 			ldconfig
 
@@ -708,7 +642,7 @@ function PackageCheck()
 	fi
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gnu/mpfr" ]; then
+	if [ ! -d "${SOFTWARE_DIRECTORY}/mpfr" ]; then
 
 		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/mpfr"
 
@@ -730,19 +664,21 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/mpfr
 
-			./configure \
-			--prefix=${SOFTWARE_DIRECTORY}/gnu/mpfr \
-			--with-gmp=${SOFTWARE_DIRECTORY}/gnu/gmp \
-			--enable-thread-safe \
-			--enable-warnings
+			rm -rf build && mkdir build && cd build
+
+			../configure \
+			--prefix=${SOFTWARE_DIRECTORY}/mpfr \
+			--with-gmp=${SOFTWARE_DIRECTORY}/gmp \
+			--enable-warnings \
+			--enable-thread-safe
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/gnu/mpfr" ]; then
+		if [ -d "${SOFTWARE_DIRECTORY}/mpfr" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/gnu/mpfr/lib >> /etc/ld.so.conf
+			echo ${SOFTWARE_DIRECTORY}/mpfr/lib >> /etc/ld.so.conf
 
 			ldconfig
 
@@ -755,7 +691,7 @@ function PackageCheck()
 	fi
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gnu/mpc" ]; then
+	if [ ! -d "${SOFTWARE_DIRECTORY}/mpc" ]; then
 
 		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/mpc"
 
@@ -777,18 +713,20 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/mpc
 
-			./configure \
-			--prefix=${SOFTWARE_DIRECTORY}/gnu/mpc \
-			--with-gmp=${SOFTWARE_DIRECTORY}/gnu/gmp \
-			--with-mpfr=${SOFTWARE_DIRECTORY}/gnu/mpfr
+			rm -rf build && mkdir build && cd build
+
+			../configure \
+			--prefix=${SOFTWARE_DIRECTORY}/mpc \
+			--with-gmp=${SOFTWARE_DIRECTORY}/gmp \
+			--with-mpfr=${SOFTWARE_DIRECTORY}/mpfr
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/gnu/mpc" ]; then
+		if [ -d "${SOFTWARE_DIRECTORY}/mpc" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/gnu/mpc/lib >> /etc/ld.so.conf
+			echo ${SOFTWARE_DIRECTORY}/mpc/lib >> /etc/ld.so.conf
 
 			ldconfig
 
@@ -801,7 +739,7 @@ function PackageCheck()
 	fi
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gnu/gcc" ]; then
+	if [ ! -d "${SOFTWARE_DIRECTORY}/gcc" ]; then
 
 		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/gcc"
 
@@ -823,49 +761,56 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/gcc
 
+			rm -rf build && mkdir build && cd build
+
 			CFLAGS=-O2 \
 			CXXFLAGS=-O2 \
 			CPPFLAGS=-O2 \
-			./configure \
+			../configure \
 			CFLAGS=-O2 \
 			CXXFLAGS=-O2 \
 			CPPFLAGS=-O2 \
-			--prefix=${SOFTWARE_DIRECTORY}/gnu/gcc \
-			--mandir=${SOFTWARE_DIRECTORY}/gnu/gcc/share/man \
-			--infodir=${SOFTWARE_DIRECTORY}/gnu/gcc/share/info \
-			--with-bugurl=http://bugzilla.redhat.com/bugzilla \
-			--enable-bootstrap \
-			--enable-shared \
-			--enable-threads=posix \
-			--enable-checking=release \
-			--enable-multilib \
-			--with-system-zlib \
-			--enable-__cxa_atexit \
-			--disable-libunwind-exceptions \
-			--enable-gnu-unique-object \
-			--enable-linker-build-id \
-			--with-gcc-major-version-only \
-			--with-linker-hash-style=gnu \
-			--enable-languages=c,c++ \
-			--enable-plugin \
-			--enable-libmpx \
-			--enable-initfini-array \
-			--enable-libgcj \
+			-v \
+			--prefix=/opt/software/gcc \
+			--program-suffix=9.3.0 \
+			--host=x86_64-redhat-linux \
+			--build=x86_64-redhat-linux \
+			--target=x86_64-redhat-linux \
+			--enable-nls \
 			--enable-dssi \
+			--enable-shared \
+			--enable-plugin \
+			--enable-libgcj \
+			--enable-libmpx \
+			--enable-multilib \
+			--enable-gtk-cairo \
+			--enable-multiarch \
+			--enable-bootstrap \
+			--enable-clocale=gnu \
+			--enable-__cxa_atexit \
+			--enable-threads=posix \
+			--enable-initfini-array \
+			--enable-languages=c,c++ \
+			--enable-linker-build-id \
+			--enable-libstdcxx-debug \
 			--enable-libgcj-multifile \
-			--with-ppl \
-			--with-cloog\
+			--enable-checking=release \
+			--enable-gnu-unique-object \
+			--enable-libstdcxx-time=yes \
+			--enable-fix-cortex-a53-843419 \
 			--enable-gnu-indirect-function \
+			--with-ppl \
+			--with-cloog \
+			--with-system-zlib \
 			--with-tune=generic \
 			--with-arch_32=i686 \
-			--build=x86_64-redhat-linux \
+			--with-gcc-major-version-only \
+			--with-linker-hash-style=gnu \
+			--with-gmp=/opt/software/gmp \
+			--with-mpc=/opt/software/mpc \
+			--with-mpfr=/opt/software/mpfr \
 			--with-diagnostics-color=auto \
-			--program-suffix=9.3.0 \
-			\
-			--with-gmp=${SOFTWARE_DIRECTORY}/gnu/gmp \
-			--with-mpfr=${SOFTWARE_DIRECTORY}/gnu/mpfr \
-			--with-mpc=${SOFTWARE_DIRECTORY}/gnu/mpc \
-			\
+			--with-default-libstdcxx-abi=new \
 			CFLAGS=-O2 \
 			CXXFLAGS=-O2 \
 			CPPFLAGS=-O2
@@ -874,14 +819,14 @@ function PackageCheck()
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/gnu/gcc" ]; then
+		if [ -d "${SOFTWARE_DIRECTORY}/gcc" ]; then
 
-			ln -sf ${SOFTWARE_DIRECTORY}/gnu/gcc/bin/cpp9.3.0 /usr/local/bin
-			ln -sf ${SOFTWARE_DIRECTORY}/gnu/gcc/bin/c++9.3.0 /usr/local/bin
-			ln -sf ${SOFTWARE_DIRECTORY}/gnu/gcc/bin/g++9.3.0 /usr/local/bin
-			ln -sf ${SOFTWARE_DIRECTORY}/gnu/gcc/bin/gcc9.3.0 /usr/local/bin
+			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/cpp9.3.0 /usr/local/bin
+			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/c++9.3.0 /usr/local/bin
+			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/g++9.3.0 /usr/local/bin
+			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/gcc9.3.0 /usr/local/bin
 
-			\cp ${SOFTWARE_DIRECTORY}/gnu/gcc/lib64/libstdc++.so.6.0.28 /usr/lib64/libstdc++.so.6
+			\cp ${SOFTWARE_DIRECTORY}/gcc/lib64/libstdc++.so.6.0.28 /usr/lib64/libstdc++.so.6
 
 			ldconfig
 
@@ -894,7 +839,7 @@ function PackageCheck()
 	fi
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gnu/gdb" ]; then
+	if [ ! -d "${SOFTWARE_DIRECTORY}/gdb" ]; then
 
 		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/gdb"
 
@@ -919,30 +864,29 @@ function PackageCheck()
 			rm -rf build && mkdir build && cd build
 
 			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/gnu/gdb \
+			--prefix=${SOFTWARE_DIRECTORY}/gdb \
 			--program-suffix=8.3 \
+			--enable-lto \
 			--enable-libada \
 			--enable-libssp \
-			--enable-lto \
-			--enable-vtable-verify \
 			--enable-host-shared \
+			--enable-vtable-verify \
+			--with-gmp=${SOFTWARE_DIRECTORY}/gmp \
+			--with-mpc=${SOFTWARE_DIRECTORY}/mpc \
+			--with-mpfr=${SOFTWARE_DIRECTORY}/mpfr \
 			\
-			--with-gmp=${SOFTWARE_DIRECTORY}/gnu/gmp \
-			--with-mpc=${SOFTWARE_DIRECTORY}/gnu/mpc \
-			--with-mpfr=${SOFTWARE_DIRECTORY}/gnu/mpfr \
-			\
-			CC=${SOFTWARE_DIRECTORY}/gnu/gcc/bin/gcc9.3.0 \
-			CXX=${SOFTWARE_DIRECTORY}/gnu/gcc/bin/g++9.3.0
+			CC=${SOFTWARE_DIRECTORY}/gcc/bin/gcc9.3.0 \
+			CXX=${SOFTWARE_DIRECTORY}/gcc/bin/g++9.3.0
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/gnu/gdb" ]; then
+		if [ -d "${SOFTWARE_DIRECTORY}/gdb" ]; then
 
-			ln -sf ${SOFTWARE_DIRECTORY}/gnu/gdb/bin/* /usr/local/bin
+			ln -sf ${SOFTWARE_DIRECTORY}/gdb/bin/* /usr/local/bin
 
-			echo ${SOFTWARE_DIRECTORY}/gnu/gdb/lib >> /etc/ld.so.conf
+			echo ${SOFTWARE_DIRECTORY}/gdb/lib >> /etc/ld.so.conf
 
 			ldconfig
 
@@ -980,7 +924,9 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/openssl
 
-			./config \
+			rm -rf build && mkdir build && cd build
+
+			../configure \
 			--prefix=${SOFTWARE_DIRECTORY}/openssl
 
 			./config -t
@@ -1028,42 +974,44 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/curl
 
-			./configure \
+			rm -rf build && mkdir build && cd build
+
+			../configure \
 			--prefix=${SOFTWARE_DIRECTORY}/curl \
 			--with-zlib=/usr \
 			--with-ssl=${SOFTWARE_DIRECTORY}/openssl \
+			--enable-ftp \
+			--enable-smb \
+			--enable-dict \
+			--enable-file \
+			--enable-http \
+			--enable-imap \
+			--enable-ipv6 \
+			--enable-ldap \
+			--enable-pop3 \
+			--enable-rtsp \
+			--enable-smtp \
+			--enable-sspi \
+			--enable-tftp \
+			--enable-ldaps \
+			--enable-proxy \
+			--enable-gopher \
+			--enable-libgcc \
+			--enable-manual \
+			--enable-telnet \
+			--enable-cookies \
+			--enable-tls-srp \
+			--enable-verbose \
 			--enable-optimize \
+			--enable-pthreads \
 			--enable-warnings \
 			--enable-curldebug \
-			--enable-http \
-			--enable-ftp \
-			--enable-file \
-			--enable-ldap \
-			--enable-ldaps \
-			--enable-rtsp \
-			--enable-proxy \
-			--enable-dict \
-			--enable-telnet \
-			--enable-tftp \
-			--enable-pop3 \
-			--enable-imap \
-			--enable-smb \
-			--enable-smtp \
-			--enable-gopher \
-			--enable-manual \
-			--enable-libcurl-option \
-			--enable-libgcc \
-			--enable-ipv6 \
-			--enable-versioned-symbols \
-			--enable-threaded-resolver \
-			--enable-pthreads \
-			--enable-verbose \
-			--enable-sspi \
 			--enable-crypto-auth \
-			--enable-tls-srp \
-			--enable-unix-sockets \
-			--enable-cookies \
 			--enable-soname-bump \
+			--enable-unix-sockets \
+			--enable-libcurl-option \
+			--enable-threaded-resolver \
+			--enable-versioned-symbols \
 			\
 			CFLAGS=-fPIC \
 			CPPFLAGS=-fPIC
@@ -1075,6 +1023,62 @@ function PackageCheck()
 		if [ -d "${SOFTWARE_DIRECTORY}/curl" ]; then
 
 			echo ${SOFTWARE_DIRECTORY}/curl/lib >> /etc/ld.so.conf
+
+			ldconfig
+
+		else
+
+			return 1
+
+		fi
+
+	fi
+
+
+	####################################################################################################
+
+
+	if [ ! -d "${SOFTWARE_DIRECTORY}/fmt" ]; then
+
+		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/fmt"
+
+		if [ ! -d "${PACKAGE_DIRECTORY}/fmt" ]; then
+
+			cd ${PACKAGE_DIRECTORY}
+
+			wget https://github.com/fmtlib/fmt/archive/5.3.0.tar.gz
+
+			tar -xvf 5.3.0.tar.gz
+
+			rm -rf 5.3.0.tar.gz
+
+			mv ${PACKAGE_DIRECTORY}/fmt-5.3.0 ${PACKAGE_DIRECTORY}/fmt
+
+		fi
+
+		if [ -d "${PACKAGE_DIRECTORY}/fmt" ]; then
+
+			cd ${PACKAGE_DIRECTORY}/fmt
+
+			rm -rf build && mkdir build && cd build
+
+			cmake .. \
+			-G "Unix Makefiles" \
+			-DFMT_DOC=OFF \
+			-DFMT_TEST=OFF \
+			-DCMAKE_BUILD_TYPE="Release" \
+			-DCMAKE_C_FLAGS=-fPIC \
+			-DCMAKE_CXX_FLAGS=-fPIC \
+			-DCMAKE_INSTALL_LIBDIR=lib \
+			-DCMAKE_INSTALL_PREFIX=${SOFTWARE_DIRECTORY}/fmt
+
+			make -j${SYSTEM_CORES} && make install
+
+		fi
+
+		if [ -d "${SOFTWARE_DIRECTORY}/fmt" ]; then
+
+			echo ${SOFTWARE_DIRECTORY}/fmt/lib >> /etc/ld.so.conf
 
 			ldconfig
 
@@ -1111,9 +1115,10 @@ function PackageCheck()
 			cmake .. \
 			-G "Unix Makefiles" \
 			-DCMAKE_BUILD_TYPE="Release" \
+			-DCMAKE_INSTALL_LIBDIR=lib \
 			-DCMAKE_INSTALL_PREFIX=${SOFTWARE_DIRECTORY}/pugixml \
-			-DUSE_POSTFIX=y \
-			-DBUILD_SHARED_AND_STATIC_LIBS=y
+			-DUSE_POSTFIX=ON \
+			-DBUILD_SHARED_AND_STATIC_LIBS=ON
 
 			make -j${SYSTEM_CORES} && make install
 
@@ -1122,7 +1127,6 @@ function PackageCheck()
 		if [ -d "${SOFTWARE_DIRECTORY}/pugixml" ]; then
 
 			echo ${SOFTWARE_DIRECTORY}/pugixml/lib >> /etc/ld.so.conf
-			echo ${SOFTWARE_DIRECTORY}/pugixml/lib64 >> /etc/ld.so.conf
 
 			ldconfig
 
@@ -1206,7 +1210,9 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/memcached
 
-			./configure \
+			rm -rf build && mkdir build && cd build
+
+			../configure \
 			--prefix=${SOFTWARE_DIRECTORY}/memcached \
 			--with-libevent=/usr \
 			\
@@ -1256,10 +1262,11 @@ function PackageCheck()
 
 			cd ${PACKAGE_DIRECTORY}/libmemcached
 
-			./configure \
+			rm -rf build && mkdir build && cd build
+
+			../configure \
 			--prefix=${SOFTWARE_DIRECTORY}/libmemcached \
 			--with-memcached=${SOFTWARE_DIRECTORY}/memcached \
-			\
 			--enable-static=yes \
 			--enable-shared=yes \
 			--enable-libmemcachedprotocol \
@@ -1268,7 +1275,7 @@ function PackageCheck()
 			CPPFLAGS=-fPIC \
 			CXXFLAGS=-fPIC
 
-			make -j${SYSTEM_CORES} && make -j${SYSTEM_CORES} && make install
+			make -j${SYSTEM_CORES} && make install
 
 		fi
 
