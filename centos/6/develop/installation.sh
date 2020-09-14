@@ -28,14 +28,9 @@ echo -e "\033[1m\033[33m开始安装\033[0m"
 SYSTEM_CORES=`cat /proc/cpuinfo| grep "processor"| wc -l`
 
 #
-# 系统版本
+# 当前源码
 #
-SYSTEM_VERSION=`rpm -q centos-release | cut -d- -f3`
-
-#
-# 当前安装包
-#
-CURRENT_PACKAGE="none"
+CURRENT_SOURCE="none"
 
 #
 # 脚本目录
@@ -43,14 +38,14 @@ CURRENT_PACKAGE="none"
 SHELL_DIRECTORY=$(cd `dirname $0`; pwd)
 
 #
-# 安装包目录
+# 源码目录
 #
-PACKAGE_DIRECTORY=/opt/package
+SOURCE_DIRECTORY=${SHELL_DIRECTORY}/source
 
 #
-# 软件安装目录
+# 安装目录
 #
-SOFTWARE_DIRECTORY=/opt/software
+INSTALL_DIRECTORY=/usr/local
 
 
 ####################################################################################################
@@ -64,22 +59,22 @@ function Initialize()
 	#
 	# 创建目录
 	#
-	if [ ! -d "${PACKAGE_DIRECTORY}" ]; then
+	if [ ! -d "${SOURCE_DIRECTORY}" ]; then
 
-		mkdir ${PACKAGE_DIRECTORY}
+		mkdir ${SOURCE_DIRECTORY}
 
-		chmod 755 ${PACKAGE_DIRECTORY}
+		chmod 755 ${SOURCE_DIRECTORY}
 
 	fi
 
 	#
 	# 创建目录
 	#
-	if [ ! -d "${SOFTWARE_DIRECTORY}" ]; then
+	if [ ! -d "${INSTALL_DIRECTORY}" ]; then
 
-		mkdir ${SOFTWARE_DIRECTORY}
+		mkdir ${INSTALL_DIRECTORY}
 
-		chmod 755 ${SOFTWARE_DIRECTORY}
+		chmod 755 ${INSTALL_DIRECTORY}
 
 	fi
 }
@@ -148,6 +143,14 @@ function UpgradeCheack()
 function YumInstall()
 {
 	#
+	# 添加源
+	#
+	wget https://copr.fedorainfracloud.org/coprs/daveisfera/devtoolset2/repo/epel-6/daveisfera-devtoolset2-epel-6.repo -O /etc/yum.repos.d/devtools-2.repo
+	wget https://copr.fedorainfracloud.org/coprs/wangchao/devtoolset-3/repo/epel-6/wangchao-devtoolset-3-epel-6.repo -O /etc/yum.repos.d/devtools-3.repo
+	wget https://copr.fedorainfracloud.org/coprs/hhorak/devtoolset-4-rebuild-bootstrap/repo/epel-6/hhorak-devtoolset-4-rebuild-bootstrap-epel-6.repo -O /etc/yum.repos.d/devtools-4.repo
+	wget https://copr.fedorainfracloud.org/coprs/mlampe/devtoolset-7/repo/epel-6/mlampe-devtoolset-7-epel-6.repo -O /etc/yum.repos.d/devtools-7.repo
+
+	#
 	# epol
 	#
 	InstallCheack epel-release
@@ -180,11 +183,6 @@ function YumInstall()
 	# gcc
 	#
 	InstallCheack gcc gcc-c++
-
-	#
-	# xz
-	#
-	InstallCheack xz xz-*
 
 	#
 	# gdb
@@ -264,7 +262,7 @@ function YumInstall()
 	#
 	# python
 	#
-	InstallCheack python python-pip python-devel
+	InstallCheack python python-pip python-devel python34 python34-pip python34-devel
 
 	#
 	# libtool
@@ -322,14 +320,29 @@ function YumInstall()
 	InstallCheack gperftools gperftools-*
 
 	#
-	# devtoolset
+	# devtoolset-2
 	#
-	InstallCheack devtoolset-8 devtoolset-8-*
+	InstallCheack evtoolset-2-gcc devtoolset-2-binutils devtoolset-2-gcc-c+
 
 	#
-	# python3.8以上需要
+	# devtoolset-3
 	#
-	InstallCheack libffi-devel
+	InstallCheack evtoolset-3-gcc devtoolset-3-binutils devtoolset-3-gcc-c++ 
+
+	#
+	# devtoolset-4
+	#
+	InstallCheack devtoolset-4-gcc devtoolset-4-binutils devtoolset-4-gcc-c++ 
+
+	#
+	# devtoolset-7
+	#
+	InstallCheack devtoolset-7 devtoolset-7-*
+
+	#
+	# devtoolset-8
+	#
+	InstallCheack devtoolset-8 devtoolset-8-*
 
 	#
 	# xz 解压缩工具
@@ -360,20 +373,19 @@ function YumInstall()
 	#
 	# make 构建工具
 	# nasm 汇编工具
+	# ccache 编译器缓存工具
 	# pkgconfig 用于获得某一个库/模块的所有编译相关的信息
 	#
-	InstallCheack make nasm pkgconfig
+	InstallCheack make nasm ccache pkgconfig
 
 	#
-	# jq json解析工具
 	# wget 下载工具
 	# tree 树形目录查看器
 	# tmux 终端复用工具
 	# screen 多进程会话
 	# doxygen 文档产生工具
-	# multitail 多日志监控
 	#
-	InstallCheack jq wget tree tmux screen doxygen multitail
+	InstallCheack wget tree tmux screen doxygen
 
 	#
 	# c-ares 安装curl需要
@@ -384,7 +396,7 @@ function YumInstall()
 
 
 #
-# yum 升级软件
+# yum升级软件
 #
 function YumUpdate()
 {
@@ -451,7 +463,47 @@ function SystemProcess()
 	# git配置
 	#
 	git config --global http.postBuffer 1024288000
-	git config --list
+
+	#
+	# 环境变量检测
+	#
+	if [ `grep -w /usr/lib /etc/ld.so.conf | wc -l` == '0' ]; then
+
+		echo /usr/lib >> /etc/ld.so.conf
+
+	fi
+
+	#
+	# 环境变量检测
+	#
+	if [ `grep -w /usr/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
+
+		echo /usr/lib64 >> /etc/ld.so.conf
+
+	fi
+
+	#
+	# 环境变量检测
+	#
+	if [ `grep -w /usr/local/lib /etc/ld.so.conf | wc -l` == '0' ]; then
+
+		echo /usr/local/lib >> /etc/ld.so.conf
+
+	fi
+
+	#
+	# 环境变量检测
+	#
+	if [ `grep -w /usr/local/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
+
+		echo /usr/local/lib64 >> /etc/ld.so.conf
+
+	fi
+
+	#
+	# 刷新环境
+	#
+	ldconfig 2> /dev/null
 }
 
 
@@ -459,42 +511,49 @@ function SystemProcess()
 
 
 #
-# 安装包检测处理
+# 软件编译
 #
-function PackageCheck()
+function PackageCompile()
 {
-	if [ ! -d "${SOFTWARE_DIRECTORY}/go" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/bin/cmake" ]; then
 
-		CURRENT_PACKAGE="${SOFTWARE_DIRECTORY}/go"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/cmake"
 
-		cd ${SOFTWARE_DIRECTORY}
+		if [ ! -d "${SOURCE_DIRECTORY}/cmake" ]; then
 
-		wget https://dl.google.com/go/go1.14.2.linux-amd64.tar.gz
+			cd ${SOURCE_DIRECTORY}
 
-		tar -xvf go1.14.2.linux-amd64.tar.gz
+			wget https://cmake.org/files/v3.18/cmake-3.18.0.tar.gz
 
-		rm -rf go1.14.2.linux-amd64.tar.gz
+			tar -xvf cmake-3.18.0.tar.gz
 
-		mv ${SOFTWARE_DIRECTORY}/go1.14.2.linux-amd64 ${SOFTWARE_DIRECTORY}/go
+			rm -rf cmake-3.18.0.tar.gz
 
-		if [ ! -d "${SOFTWARE_DIRECTORY}/go" ]; then
-
-			return 1
+			mv ${SOURCE_DIRECTORY}/cmake-3.18.0 ${SOURCE_DIRECTORY}/cmake
 
 		fi
 
-		if [ -f "${SOFTWARE_DIRECTORY}/go/bin/go" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/cmake" ]; then
 
-			echo "export GOROOT=${SOFTWARE_DIRECTORY}/go" >> /etc/profile
-			echo "export PATH=\$PATH:\$GOROOT/bin" >> /etc/profile
+			cd ${SOURCE_DIRECTORY}/cmake
 
-			source /etc/profile
+			rm -rf build && mkdir build && cd build
 
-			ln -sf ${SOFTWARE_DIRECTORY}/go/bin/* /usr/local/bin
+			../configure \
+			--prefix=${INSTALL_DIRECTORY} \
+			--system-curl \
+			--system-zlib \
+			--system-bzip2 \
+			--enable-ccache \
+			\
+			CC=/opt/rh/devtoolset-8/root/usr/bin/gcc \
+			CXX=/opt/rh/devtoolset-8/root/usr/bin/g++
 
-			ldconfig
+			make -j${SYSTEM_CORES} && make install
 
-		else
+		fi
+
+		if [ ! -f "${INSTALL_DIRECTORY}/bin/cmake" ]; then
 
 			return 1
 
@@ -506,246 +565,13 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/cmake" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/bin/gcc9.3.0" ]; then
 
-		CURRENT_PACKAGE="${SOFTWARE_DIRECTORY}/cmake"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/gcc"
 
-		cd ${SOFTWARE_DIRECTORY}
+		if [ ! -d "${SOURCE_DIRECTORY}/gcc" ]; then
 
-		wget https://github.com/Kitware/CMake/releases/download/v3.17.0/cmake-3.17.0-Linux-x86_64.tar.gz
-
-		tar -xvf cmake-3.17.0-Linux-x86_64.tar.gz
-
-		rm -rf cmake-3.17.0-Linux-x86_64.tar.gz
-
-		mv ${SOFTWARE_DIRECTORY}/cmake-3.17.0-Linux-x86_64 ${SOFTWARE_DIRECTORY}/cmake
-
-		if [ ! -d "${SOFTWARE_DIRECTORY}/cmake" ]; then
-
-			return 1
-
-		fi
-
-		if [ -f "${SOFTWARE_DIRECTORY}/cmake/bin/cmake" ]; then
-
-			ln -sf ${SOFTWARE_DIRECTORY}/cmake/bin/* /usr/local/bin
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	####################################################################################################
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/python" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/python"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/python" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
-
-			wget https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tar.xz
-
-			tar -xvf Python-3.8.0.tar.xz
-
-			rm -rf Python-3.8.0.tar.xz
-
-			mv ${PACKAGE_DIRECTORY}/Python-3.8.0 ${PACKAGE_DIRECTORY}/python
-
-		fi
-
-		if [ -d "${PACKAGE_DIRECTORY}/python" ]; then
-
-			cd ${PACKAGE_DIRECTORY}/python
-
-			./configure \
-			--prefix=${SOFTWARE_DIRECTORY}/python \
-			--enable-shared \
-			--enable-profiling \
-			--enable-optimizations
-
-			make -j${SYSTEM_CORES} && make install
-
-		fi
-
-		if [ -d "${SOFTWARE_DIRECTORY}/python" ]; then
-
-			ln -sf ${SOFTWARE_DIRECTORY}/python/bin/python3.8 /usr/local/bin
-
-			echo ${SOFTWARE_DIRECTORY}/python/lib >> /etc/ld.so.conf
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	####################################################################################################
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gmp" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/gmp"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/gmp" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
-
-			wget http://mirrors.ustc.edu.cn/gnu/gmp/gmp-6.1.2.tar.xz
-
-			tar -xvf gmp-6.1.2.tar.xz
-
-			rm -rf gmp-6.1.2.tar.xz
-
-			mv ${PACKAGE_DIRECTORY}/gmp-6.1.2 ${PACKAGE_DIRECTORY}/gmp
-
-		fi
-
-		if [ -d "${PACKAGE_DIRECTORY}/gmp" ]; then
-
-			cd ${PACKAGE_DIRECTORY}/gmp
-
-			rm -rf build && mkdir build && cd build
-
-			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/gmp
-
-			make -j${SYSTEM_CORES} && make install
-
-		fi
-
-		if [ -d "${SOFTWARE_DIRECTORY}/gmp" ]; then
-
-			echo ${SOFTWARE_DIRECTORY}/gmp/lib >> /etc/ld.so.conf
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/mpfr" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/mpfr"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/mpfr" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
-
-			wget http://mirrors.ustc.edu.cn/gnu/mpfr/mpfr-4.0.1.tar.gz
-
-			tar -xvf mpfr-4.0.1.tar.gz
-
-			rm -rf mpfr-4.0.1.tar.gz
-
-			mv ${PACKAGE_DIRECTORY}/mpfr-4.0.1 ${PACKAGE_DIRECTORY}/mpfr
-
-		fi
-
-		if [ -d "${PACKAGE_DIRECTORY}/mpfr" ]; then
-
-			cd ${PACKAGE_DIRECTORY}/mpfr
-
-			rm -rf build && mkdir build && cd build
-
-			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/mpfr \
-			--with-gmp=${SOFTWARE_DIRECTORY}/gmp \
-			--enable-warnings \
-			--enable-thread-safe
-
-			make -j${SYSTEM_CORES} && make install
-
-		fi
-
-		if [ -d "${SOFTWARE_DIRECTORY}/mpfr" ]; then
-
-			echo ${SOFTWARE_DIRECTORY}/mpfr/lib >> /etc/ld.so.conf
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/mpc" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/mpc"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/mpc" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
-
-			wget http://mirrors.ustc.edu.cn/gnu/mpc/mpc-1.1.0.tar.gz
-
-			tar -xvf mpc-1.1.0.tar.gz
-
-			rm -rf mpc-1.1.0.tar.gz
-
-			mv ${PACKAGE_DIRECTORY}/mpc-1.1.0 ${PACKAGE_DIRECTORY}/mpc
-
-		fi
-
-		if [ -d "${PACKAGE_DIRECTORY}/mpc" ]; then
-
-			cd ${PACKAGE_DIRECTORY}/mpc
-
-			rm -rf build && mkdir build && cd build
-
-			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/mpc \
-			--with-gmp=${SOFTWARE_DIRECTORY}/gmp \
-			--with-mpfr=${SOFTWARE_DIRECTORY}/mpfr
-
-			make -j${SYSTEM_CORES} && make install
-
-		fi
-
-		if [ -d "${SOFTWARE_DIRECTORY}/mpc" ]; then
-
-			echo ${SOFTWARE_DIRECTORY}/mpc/lib >> /etc/ld.so.conf
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gcc" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/gcc"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/gcc" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
+			cd ${SOURCE_DIRECTORY}
 
 			wget http://mirrors.ustc.edu.cn/gnu/gcc/gcc-9.3.0/gcc-9.3.0.tar.gz
 
@@ -753,26 +579,26 @@ function PackageCheck()
 
 			rm -rf gcc-9.3.0.tar.gz
 
-			mv ${PACKAGE_DIRECTORY}/gcc-9.3.0 ${PACKAGE_DIRECTORY}/gcc
+			mv ${SOURCE_DIRECTORY}/gcc-9.3.0 ${SOURCE_DIRECTORY}/gcc
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/gcc" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/gcc" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/gcc
+			cd ${SOURCE_DIRECTORY}/gcc
+
+			./contrib/download_prerequisites
 
 			rm -rf build && mkdir build && cd build
 
 			CFLAGS=-O2 \
 			CXXFLAGS=-O2 \
-			CPPFLAGS=-O2 \
 			../configure \
 			CFLAGS=-O2 \
 			CXXFLAGS=-O2 \
-			CPPFLAGS=-O2 \
 			-v \
-			--prefix=/opt/software/gcc \
-			--program-suffix=9.3.0 \
+			--prefix=${INSTALL_DIRECTORY} \
+			--program-suffix=8.3.0 \
 			--host=x86_64-redhat-linux \
 			--build=x86_64-redhat-linux \
 			--target=x86_64-redhat-linux \
@@ -806,31 +632,17 @@ function PackageCheck()
 			--with-arch_32=i686 \
 			--with-gcc-major-version-only \
 			--with-linker-hash-style=gnu \
-			--with-gmp=/opt/software/gmp \
-			--with-mpc=/opt/software/mpc \
-			--with-mpfr=/opt/software/mpfr \
 			--with-diagnostics-color=auto \
 			--with-default-libstdcxx-abi=new \
+			\
 			CFLAGS=-O2 \
-			CXXFLAGS=-O2 \
-			CPPFLAGS=-O2
+			CXXFLAGS=-O2
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/gcc" ]; then
-
-			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/cpp9.3.0 /usr/local/bin
-			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/c++9.3.0 /usr/local/bin
-			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/g++9.3.0 /usr/local/bin
-			ln -sf ${SOFTWARE_DIRECTORY}/gcc/bin/gcc9.3.0 /usr/local/bin
-
-			\cp ${SOFTWARE_DIRECTORY}/gcc/lib64/libstdc++.so.6.0.28 /usr/lib64/libstdc++.so.6
-
-			ldconfig
-
-		else
+		if [ ! -f "${INSTALL_DIRECTORY}/bin/gcc9.3.0" ]; then
 
 			return 1
 
@@ -839,13 +651,16 @@ function PackageCheck()
 	fi
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/gdb" ]; then
+	####################################################################################################
 
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/gdb"
 
-		if [ ! -d "${PACKAGE_DIRECTORY}/gdb" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/bin/gdb8.3" ]; then
 
-			cd ${PACKAGE_DIRECTORY}
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/gdb"
+
+		if [ ! -d "${SOURCE_DIRECTORY}/gdb" ]; then
+
+			cd ${SOURCE_DIRECTORY}
 
 			wget http://mirrors.ustc.edu.cn/gnu/gdb/gdb-8.3.tar.gz
 
@@ -853,178 +668,42 @@ function PackageCheck()
 
 			rm -rf gdb-8.3.tar.gz
 
-			mv ${PACKAGE_DIRECTORY}/gdb-8.3 ${PACKAGE_DIRECTORY}/gdb
+			mv ${SOURCE_DIRECTORY}/gdb-8.3 ${SOURCE_DIRECTORY}/gdb
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/gdb" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/gdb" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/gdb
+			cd ${SOURCE_DIRECTORY}/gdb
 
 			rm -rf build && mkdir build && cd build
 
 			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/gdb \
+			--prefix=${INSTALL_DIRECTORY} \
 			--program-suffix=8.3 \
 			--enable-lto \
 			--enable-libada \
 			--enable-libssp \
 			--enable-host-shared \
 			--enable-vtable-verify \
-			--with-gmp=${SOFTWARE_DIRECTORY}/gmp \
-			--with-mpc=${SOFTWARE_DIRECTORY}/mpc \
-			--with-mpfr=${SOFTWARE_DIRECTORY}/mpfr \
+			--with-system-zlib \
 			\
-			CC=${SOFTWARE_DIRECTORY}/gcc/bin/gcc9.3.0 \
-			CXX=${SOFTWARE_DIRECTORY}/gcc/bin/g++9.3.0
-
-			make -j${SYSTEM_CORES} && make install
-
-		fi
-
-		if [ -d "${SOFTWARE_DIRECTORY}/gdb" ]; then
-
-			ln -sf ${SOFTWARE_DIRECTORY}/gdb/bin/* /usr/local/bin
-
-			echo ${SOFTWARE_DIRECTORY}/gdb/lib >> /etc/ld.so.conf
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	####################################################################################################
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/openssl" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/openssl"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/openssl" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
-
-			wget https://www.openssl.org/source/openssl-1.1.1f.tar.gz
-
-			tar -xvf openssl-1.1.1f.tar.gz
-
-			rm -rf openssl-1.1.1f.tar.gz
-
-			mv ${PACKAGE_DIRECTORY}/openssl-1.1.1f ${PACKAGE_DIRECTORY}/openssl
-
-		fi
-
-		if [ -d "${PACKAGE_DIRECTORY}/openssl" ]; then
-
-			cd ${PACKAGE_DIRECTORY}/openssl
-
-			rm -rf build && mkdir build && cd build
-
-			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/openssl
-
-			./config -t
-
-			make depend && make -j${SYSTEM_CORES} && make install
-
-		fi
-
-		if [ -d "${SOFTWARE_DIRECTORY}/openssl" ]; then
-
-			echo ${SOFTWARE_DIRECTORY}/openssl/lib >> /etc/ld.so.conf
-
-			ldconfig
-
-		else
-
-			return 1
-
-		fi
-
-	fi
-
-
-	####################################################################################################
-
-
-	if [ ! -d "${SOFTWARE_DIRECTORY}/curl" ]; then
-
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/curl"
-
-		if [ ! -d "${PACKAGE_DIRECTORY}/curl" ]; then
-
-			cd ${PACKAGE_DIRECTORY}
-
-			wget https://curl.haxx.se/download/curl-7.69.0.tar.gz
-
-			tar -xvf curl-7.69.0.tar.gz
-
-			rm -rf curl-7.69.0.tar.gz
-
-			mv ${PACKAGE_DIRECTORY}/curl-7.69.0 ${PACKAGE_DIRECTORY}/curl
-		fi
-
-		if [ -d "${PACKAGE_DIRECTORY}/curl" ]; then
-
-			cd ${PACKAGE_DIRECTORY}/curl
-
-			rm -rf build && mkdir build && cd build
-
-			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/curl \
-			--with-zlib=/usr \
-			--with-ssl=${SOFTWARE_DIRECTORY}/openssl \
-			--enable-ftp \
-			--enable-smb \
-			--enable-dict \
-			--enable-file \
-			--enable-http \
-			--enable-imap \
-			--enable-ipv6 \
-			--enable-ldap \
-			--enable-pop3 \
-			--enable-rtsp \
-			--enable-smtp \
-			--enable-sspi \
-			--enable-tftp \
-			--enable-ldaps \
-			--enable-proxy \
-			--enable-gopher \
-			--enable-libgcc \
-			--enable-manual \
-			--enable-telnet \
-			--enable-cookies \
-			--enable-tls-srp \
-			--enable-verbose \
-			--enable-optimize \
-			--enable-pthreads \
-			--enable-warnings \
-			--enable-curldebug \
-			--enable-crypto-auth \
-			--enable-soname-bump \
-			--enable-unix-sockets \
-			--enable-libcurl-option \
-			--enable-threaded-resolver \
-			--enable-versioned-symbols \
-			\
+			CC=gcc9.3.0 \
+			CXX=g++9.3.0 \
 			CFLAGS=-fPIC \
-			CPPFLAGS=-fPIC
+			CXXFLAGS=-fPIC
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/curl" ]; then
+		if [ -f "${INSTALL_DIRECTORY}/bin/gdb8.3" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/curl/lib >> /etc/ld.so.conf
+			if [ `grep -w ${INSTALL_DIRECTORY}/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
 
-			ldconfig
+				echo ${INSTALL_DIRECTORY}/lib >> /etc/ld.so.conf
+
+			fi
 
 		else
 
@@ -1038,13 +717,13 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/fmt" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/lib/libfmt.a" ]; then
 
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/fmt"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/fmt"
 
-		if [ ! -d "${PACKAGE_DIRECTORY}/fmt" ]; then
+		if [ ! -d "${SOURCE_DIRECTORY}/fmt" ]; then
 
-			cd ${PACKAGE_DIRECTORY}
+			cd ${SOURCE_DIRECTORY}
 
 			wget https://github.com/fmtlib/fmt/archive/5.3.0.tar.gz
 
@@ -1052,13 +731,13 @@ function PackageCheck()
 
 			rm -rf 5.3.0.tar.gz
 
-			mv ${PACKAGE_DIRECTORY}/fmt-5.3.0 ${PACKAGE_DIRECTORY}/fmt
+			mv ${SOURCE_DIRECTORY}/fmt-5.3.0 ${SOURCE_DIRECTORY}/fmt
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/fmt" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/fmt" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/fmt
+			cd ${SOURCE_DIRECTORY}/fmt
 
 			rm -rf build && mkdir build && cd build
 
@@ -1070,17 +749,19 @@ function PackageCheck()
 			-DCMAKE_C_FLAGS=-fPIC \
 			-DCMAKE_CXX_FLAGS=-fPIC \
 			-DCMAKE_INSTALL_LIBDIR=lib \
-			-DCMAKE_INSTALL_PREFIX=${SOFTWARE_DIRECTORY}/fmt
+			-DCMAKE_INSTALL_PREFIX=${INSTALL_DIRECTORY}
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/fmt" ]; then
+		if [ -f "${INSTALL_DIRECTORY}/lib/libfmt.a" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/fmt/lib >> /etc/ld.so.conf
+			if [ `grep -w ${INSTALL_DIRECTORY}/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
 
-			ldconfig
+				echo ${INSTALL_DIRECTORY}/lib >> /etc/ld.so.conf
+
+			fi
 
 		else
 
@@ -1094,41 +775,45 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/pugixml" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/lib/libpugixml.so" ]; then
 
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/pugixml"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/pugixml"
 
-		if [ ! -d "${PACKAGE_DIRECTORY}/pugixml" ]; then
+		if [ ! -d "${SOURCE_DIRECTORY}/pugixml" ]; then
 
-			cd ${PACKAGE_DIRECTORY}
+			cd ${SOURCE_DIRECTORY}
 
 			git clone --depth 1 https://github.com/zeux/pugixml.git
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/pugixml" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/pugixml" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/pugixml
+			cd ${SOURCE_DIRECTORY}/pugixml
 
 			rm -rf build && mkdir build && cd build
 
 			cmake .. \
 			-G "Unix Makefiles" \
+			-DCMAKE_C_FLAGS=-fPIC \
+			-DCMAKE_CXX_FLAGS=-fPIC \
 			-DCMAKE_BUILD_TYPE="Release" \
 			-DCMAKE_INSTALL_LIBDIR=lib \
-			-DCMAKE_INSTALL_PREFIX=${SOFTWARE_DIRECTORY}/pugixml \
+			-DCMAKE_INSTALL_PREFIX=${INSTALL_DIRECTORY} \
 			-DUSE_POSTFIX=ON \
-			-DBUILD_SHARED_AND_STATIC_LIBS=ON
+			-DBUILD_SHARED_LIBS=ON
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/pugixml" ]; then
+		if [ -f "${INSTALL_DIRECTORY}/lib/libpugixml.so" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/pugixml/lib >> /etc/ld.so.conf
+			if [ `grep -w ${INSTALL_DIRECTORY}/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
 
-			ldconfig
+				echo ${INSTALL_DIRECTORY}/lib >> /etc/ld.so.conf
+
+			fi
 
 		else
 
@@ -1142,39 +827,44 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/rapidjson" ]; then
+	if [ ! -d "${INSTALL_DIRECTORY}/include/rapidjson" ]; then
 
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/rapidjson"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/rapidjson"
 
-		if [ ! -d "${PACKAGE_DIRECTORY}/rapidjson" ]; then
+		if [ ! -d "${SOURCE_DIRECTORY}/rapidjson" ]; then
 
-			cd ${PACKAGE_DIRECTORY}
+			cd ${SOURCE_DIRECTORY}
 
 			git clone --depth 1 https://github.com/Tencent/rapidjson.git
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/rapidjson" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/rapidjson" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/rapidjson
+			cd ${SOURCE_DIRECTORY}/rapidjson
 
 			rm -rf build && mkdir build && cd build
 
 			cmake .. \
 			-G "Unix Makefiles" \
+			-DCMAKE_C_FLAGS=-fPIC \
+			-DCMAKE_CXX_FLAGS=-fPIC \
 			-DCMAKE_BUILD_TYPE="Release" \
-			-DCMAKE_INSTALL_PREFIX=${SOFTWARE_DIRECTORY}/rapidjson \
+			-DCMAKE_INSTALL_LIBDIR=lib \
+			-DCMAKE_INSTALL_PREFIX=${INSTALL_DIRECTORY} \
 			-DRAPIDJSON_BUILD_EXAMPLES=OFF
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/rapidjson" ]; then
+		if [ -d "${INSTALL_DIRECTORY}/include/rapidjson" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/rapidjson/lib >> /etc/ld.so.conf
+			if [ `grep -w ${INSTALL_DIRECTORY}/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
 
-			ldconfig
+				echo ${INSTALL_DIRECTORY}/lib >> /etc/ld.so.conf
+
+			fi
 
 		else
 
@@ -1188,13 +878,13 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/memcached" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/bin/memcached" ]; then
 
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/memcached"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/memcached"
 
-		if [ ! -d "${PACKAGE_DIRECTORY}/memcached" ]; then
+		if [ ! -d "${SOURCE_DIRECTORY}/memcached" ]; then
 
-			cd ${PACKAGE_DIRECTORY}
+			cd ${SOURCE_DIRECTORY}
 
 			wget http://memcached.org/files/memcached-1.6.3.tar.gz
 
@@ -1202,33 +892,31 @@ function PackageCheck()
 
 			rm -rf memcached-1.6.3.tar.gz
 
-			mv ${PACKAGE_DIRECTORY}/memcached-1.6.3 ${PACKAGE_DIRECTORY}/memcached
+			mv ${SOURCE_DIRECTORY}/memcached-1.6.3 ${SOURCE_DIRECTORY}/memcached
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/memcached" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/memcached" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/memcached
+			cd ${SOURCE_DIRECTORY}/memcached
 
 			rm -rf build && mkdir build && cd build
 
 			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/memcached \
+			--prefix=${INSTALL_DIRECTORY} \
 			--with-libevent=/usr \
+			--enable-64bit \
+			--enable-static \
+			--enable-seccomp \
+			--enable-dependency-tracking \
 			\
-			CFLAGS=-fPIC \
-			CPPFLAGS=-fPIC \
-			CXXFLAGS=-fPIC
+			CFLAGS=-fPIC
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/memcached" ]; then
-
-			ln -sf ${SOFTWARE_DIRECTORY}/memcached/bin/memcached /usr/local/bin/
-
-		else
+		if [ ! -f "${INSTALL_DIRECTORY}/bin/memcached" ]; then
 
 			return 1
 
@@ -1240,13 +928,13 @@ function PackageCheck()
 	####################################################################################################
 
 
-	if [ ! -d "${SOFTWARE_DIRECTORY}/libmemcached" ]; then
+	if [ ! -f "${INSTALL_DIRECTORY}/lib/libmemcached.so" ]; then
 
-		CURRENT_PACKAGE="${PACKAGE_DIRECTORY}/libmemcached"
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/libmemcached"
 
-		if [ ! -d "${PACKAGE_DIRECTORY}/libmemcached" ]; then
+		if [ ! -d "${SOURCE_DIRECTORY}/libmemcached" ]; then
 
-			cd ${PACKAGE_DIRECTORY}
+			cd ${SOURCE_DIRECTORY}
 
 			wget https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz
 
@@ -1254,36 +942,38 @@ function PackageCheck()
 
 			rm -rf libmemcached-1.0.18.tar.gz
 
-			mv ${PACKAGE_DIRECTORY}/libmemcached-1.0.18 ${PACKAGE_DIRECTORY}/libmemcached
+			mv ${SOURCE_DIRECTORY}/libmemcached-1.0.18 ${SOURCE_DIRECTORY}/libmemcached
 
 		fi
 
-		if [ -d "${PACKAGE_DIRECTORY}/libmemcached" ]; then
+		if [ -d "${SOURCE_DIRECTORY}/libmemcached" ]; then
 
-			cd ${PACKAGE_DIRECTORY}/libmemcached
+			cd ${SOURCE_DIRECTORY}/libmemcached
 
 			rm -rf build && mkdir build && cd build
 
 			../configure \
-			--prefix=${SOFTWARE_DIRECTORY}/libmemcached \
-			--with-memcached=${SOFTWARE_DIRECTORY}/memcached \
-			--enable-static=yes \
-			--enable-shared=yes \
+			--prefix=${INSTALL_DIRECTORY} \
+			--with-memcached=${INSTALL_DIRECTORY} \
+			--enable-debug \
+			--enable-assert \
+			--enable-dependency-tracking \
 			--enable-libmemcachedprotocol \
 			\
 			CFLAGS=-fPIC \
-			CPPFLAGS=-fPIC \
 			CXXFLAGS=-fPIC
 
 			make -j${SYSTEM_CORES} && make install
 
 		fi
 
-		if [ -d "${SOFTWARE_DIRECTORY}/libmemcached" ]; then
+		if [ -f "${INSTALL_DIRECTORY}/lib/libmemcached.so" ]; then
 
-			echo ${SOFTWARE_DIRECTORY}/libmemcached/lib >> /etc/ld.so.conf
+			if [ `grep -w ${INSTALL_DIRECTORY}/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
 
-			ldconfig
+				echo ${INSTALL_DIRECTORY}/lib >> /etc/ld.so.conf
+
+			fi
 
 		else
 
@@ -1305,14 +995,14 @@ function PackageCheck()
 
 
 #
-# 安装包安装软件
+# 软件安装
 #
-function PackageInstall()
+function SoftwareInstall()
 {
 	#
-	# 安装包检测处理
+	# 软件编译
 	#
-	PackageCheck
+	PackageCompile
 
 	#
 	# 循环处理
@@ -1323,13 +1013,13 @@ function PackageInstall()
 		# 错误信息
 		#
 		echo ""
-		echo "********** Package "${CURRENT_PACKAGE}" Error **********"
+		echo "********** Compile "${CURRENT_SOURCE}" Error **********"
 		echo ""
 
 		#
-		# 删除安装包
+		# 删除源码
 		#
-		rm -rf ${CURRENT_PACKAGE}
+		rm -rf ${CURRENT_SOURCE}
 
 		#
 		# 睡眠
@@ -1337,44 +1027,44 @@ function PackageInstall()
 		sleep 10s
 
 		#
-		# 安装包检测处理
+		# 软件编译
 		#
-		PackageCheck
+		PackageCompile
 
 	done
 }
 
 
 #
-# 安装包清理缓存
+# 软件清理
 #
-function PackageClean()
+function SoftwareClean()
 {
 	#
 	# 删除源码
 	#
-	if [ -d "${PACKAGE_DIRECTORY}" ]; then
+	if [ -d "${SOURCE_DIRECTORY}" ]; then
 
-		rm -rf ${PACKAGE_DIRECTORY}
+		rm -rf ${SOURCE_DIRECTORY}
 
 	fi
 }
 
 
 #
-# 安装包处理流程
+# 软件处理流程
 #
-function PackageProcess()
+function SoftwareProcess()
 {
 	#
-	# 安装包安装软件
+	# 软件安装
 	#
-	PackageInstall
+	SoftwareInstall
 
 	#
-	# 安装包清理缓存
+	# 软件清理
 	#
-	PackageClean
+	SoftwareClean
 }
 
 
@@ -1397,9 +1087,9 @@ YumProcess
 SystemProcess
 
 #
-# 安装包处理流程
+# 软件处理流程
 #
-PackageProcess
+SoftwareProcess
 
 
 ####################################################################################################
