@@ -195,11 +195,6 @@ function YumInstall()
 	InstallCheack java-1.8.0-openjdk
 
 	#
-	# python
-	#
-	InstallCheack rh-python36-*
-
-	#
 	# gcc
 	#
 	InstallCheack gcc gcc-c++
@@ -282,7 +277,7 @@ function YumInstall()
 	#
 	# python
 	#
-	InstallCheack python python-pip python-devel python34 python34-pip python34-devel
+	InstallCheack python python-pip python-devel
 
 	#
 	# libtool
@@ -342,12 +337,12 @@ function YumInstall()
 	#
 	# devtoolset-2
 	#
-	InstallCheack evtoolset-2-gcc devtoolset-2-binutils devtoolset-2-gcc-c+
+	InstallCheack devtoolset-2-gcc devtoolset-2-binutils devtoolset-2-gcc-c+
 
 	#
 	# devtoolset-3
 	#
-	InstallCheack evtoolset-3-gcc devtoolset-3-binutils devtoolset-3-gcc-c++ 
+	InstallCheack devtoolset-3-gcc devtoolset-3-binutils devtoolset-3-gcc-c++ 
 
 	#
 	# devtoolset-4
@@ -412,6 +407,13 @@ function YumInstall()
 	# texinfo 安装gdb需要
 	#
 	InstallCheack c-ares texinfo
+
+	#
+	# tk-devel 安装python需要
+	# libffi-devel 安装python需要
+	# libuuid-devel 安装python需要
+	#
+	InstallCheack tk-devel libffi-devel libuuid-devel
 }
 
 
@@ -487,24 +489,6 @@ function SystemProcess()
 	#
 	# 环境变量检测
 	#
-	if [ `grep -w /usr/lib /etc/ld.so.conf | wc -l` == '0' ]; then
-
-		echo /usr/lib >> /etc/ld.so.conf
-
-	fi
-
-	#
-	# 环境变量检测
-	#
-	if [ `grep -w /usr/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
-
-		echo /usr/lib64 >> /etc/ld.so.conf
-
-	fi
-
-	#
-	# 环境变量检测
-	#
 	if [ `grep -w /usr/local/lib /etc/ld.so.conf | wc -l` == '0' ]; then
 
 		echo /usr/local/lib >> /etc/ld.so.conf
@@ -517,6 +501,24 @@ function SystemProcess()
 	if [ `grep -w /usr/local/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
 
 		echo /usr/local/lib64 >> /etc/ld.so.conf
+
+	fi
+
+	#
+	# 环境变量检测
+	#
+	if [ `grep -w /usr/lib /etc/ld.so.conf | wc -l` == '0' ]; then
+
+		echo /usr/lib >> /etc/ld.so.conf
+
+	fi
+
+	#
+	# 环境变量检测
+	#
+	if [ `grep -w /usr/lib64 /etc/ld.so.conf | wc -l` == '0' ]; then
+
+		echo /usr/lib64 >> /etc/ld.so.conf
 
 	fi
 
@@ -574,6 +576,107 @@ function PackageCompile()
 		fi
 
 		if [ ! -f "${INSTALL_DIRECTORY}/bin/cmake" ]; then
+
+			return 1
+
+		fi
+
+	fi
+
+
+	####################################################################################################
+
+
+	if [ ! -f "${INSTALL_DIRECTORY}/bin/openssl" ]; then
+
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/openssl"
+
+		if [ ! -d "${SOURCE_DIRECTORY}/openssl" ]; then
+
+			cd ${SOURCE_DIRECTORY}
+
+			wget https://www.openssl.org/source/old/1.0.2/openssl-1.0.2u.tar.gz
+
+			tar -xvf openssl-1.0.2u.tar.gz
+
+			rm -rf openssl-1.0.2u.tar.gz
+
+			mv ${SOURCE_DIRECTORY}/openssl-1.0.2u ${SOURCE_DIRECTORY}/openssl
+
+		fi
+
+		if [ -d "${SOURCE_DIRECTORY}/openssl" ]; then
+
+			cd ${SOURCE_DIRECTORY}/openssl
+
+			./Configure \
+			--prefix=${INSTALL_DIRECTORY} \
+			\
+			zlib \
+			no-asm \
+			shared \
+			threads \
+			linux-x86_64
+
+			sed -i 's/LIBDIR=lib64/LIBDIR=lib/g' Makefile
+
+			make -j${SYSTEM_CORES} && make install
+
+		fi
+
+		if [ ! -f "${INSTALL_DIRECTORY}/bin/openssl" ]; then
+
+			return 1
+
+		fi
+
+	fi
+
+
+	####################################################################################################
+
+
+	if [ ! -f "${INSTALL_DIRECTORY}/bin/python3.9" ]; then
+
+		CURRENT_SOURCE="${SOURCE_DIRECTORY}/python"
+
+		if [ ! -d "${SOURCE_DIRECTORY}/python" ]; then
+
+			cd ${SOURCE_DIRECTORY}
+
+			wget https://www.python.org/ftp/python/3.9.0/Python-3.9.0.tar.xz
+
+			tar -xvf Python-3.9.0.tar.xz
+
+			rm -rf Python-3.9.0.tar.xz
+
+			mv ${SOURCE_DIRECTORY}/Python-3.9.0 ${SOURCE_DIRECTORY}/python
+
+		fi
+
+		if [ -d "${SOURCE_DIRECTORY}/python" ]; then
+
+			cd ${SOURCE_DIRECTORY}/python
+
+			rm -rf build && mkdir build && cd build
+
+			../configure \
+			--prefix=${INSTALL_DIRECTORY} \
+			--enable-shared \
+			--enable-profiling \
+			--enable-optimizations \
+			--with-pydebug \
+			--with-openssl=${INSTALL_DIRECTORY} \
+			--with-ssl-default-suites=openssl \
+			\
+			CC=/opt/rh/devtoolset-8/root/usr/bin/gcc \
+			CFLAGS=-fPIC
+
+			make -j${SYSTEM_CORES} && make install
+
+		fi
+
+		if [ ! -f "${INSTALL_DIRECTORY}/bin/python3.9" ]; then
 
 			return 1
 
