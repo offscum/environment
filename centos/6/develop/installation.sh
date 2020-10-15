@@ -175,21 +175,6 @@ function YumInstall()
 	InstallCheack yum-utils yum-priorities yum-fastestmirror yum-plugin-downloadonly
 
 	#
-	# 导入公钥
-	#
-	rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
-
-	#
-	# 导入数据源
-	#
-	rpm -Uvh http://www.elrepo.org/elrepo-release-6-10.el6.elrepo.noarch.rpm
-
-	#
-	# 下载内核
-	#
-	InstallCheack kernel-lt --enablerepo=elrepo-kernel
-
-	#
 	# java
 	#
 	InstallCheack java-1.8.0-openjdk
@@ -358,6 +343,21 @@ function YumInstall()
 	# devtoolset-8
 	#
 	InstallCheack devtoolset-8 devtoolset-8-*
+
+	#
+	# 导入公钥
+	#
+	rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+
+	#
+	# 导入数据源
+	#
+	rpm -Uvh http://www.elrepo.org/elrepo-release-6-10.el6.elrepo.noarch.rpm
+
+	#
+	# 下载内核
+	#
+	InstallCheack kernel-lt --enablerepo=elrepo-kernel
 
 	#
 	# xz 解压缩工具
@@ -660,6 +660,8 @@ function PackageCompile()
 
 			rm -rf build && mkdir build && cd build
 
+			ldconfig 2> /dev/null
+			
 			../configure \
 			--prefix=${INSTALL_DIRECTORY} \
 			--enable-shared \
